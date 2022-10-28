@@ -20,7 +20,7 @@ struct state {
 	unsigned char initial;
 };
 
-const unsigned char default_sbox[256] = {
+const unsigned char tc0_default_sbox[256] = {
 	/* 0     1    2      3     4     5     6     7     8     9     A     B     C     D     E     F */
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -148,12 +148,7 @@ void mix_cubes(struct state* s) {
 		mix_cube(&((*s).c[i]));
 	}
 	for (i = 0; i < N - 1; i++) {
-		memxor(
-			&((*s).c[i]),
-			&((*s).c[i + 1]),
-			sizeof(struct cube)
-		);
-		//printf("XOR %lx with %lx size %lu diff %lu\n", &((*s).c[i]), &((*s).c[i + 1]), sizeof(struct cube), (unsigned long)(&((*s).c[i + 1])) - (unsigned long)(&((*s).c[i])));
+		memxor(&((*s).c[i]), &((*s).c[i + 1]), sizeof(struct cube));
 	}
 	for (i = N - 1; i > 0; i--) {
 		memxor(&((*s).c[i]), &((*s).c[i - 1]), sizeof(struct cube));
@@ -215,8 +210,8 @@ size_t next(size_t n, unsigned long m) {
 	return n + m - r;
 }
 
-char* tc0_encrypt(char* src, unsigned char* key) {
-	char* dst = calloc(next(strlen(src), K), 1);
+char* tc0_encrypt_sb(char* src, size_t len, unsigned char* key, unsigned char* sbox) {
+	char* dst = calloc(next(len, K), 1);
 	unsigned long blocks = next(strlen(src), K) / K;
 	char* next = dst;
 	struct state* prev = NULL;
@@ -230,7 +225,7 @@ char* tc0_encrypt(char* src, unsigned char* key) {
 		unsigned char* rk = malloc(K);
 		for (unsigned long j = 0; j < R; j++) {
 			round_key(rk, key, j);
-			round_encrypt_state(s, default_sbox, rk);
+			round_encrypt_state(s, sbox, rk);
 		}
 		free(rk);
 		memcpy(next, (*s).c, K);
@@ -242,12 +237,12 @@ char* tc0_encrypt(char* src, unsigned char* key) {
 	return dst;
 }
 
-char* tc0_decrypt(char* src, unsigned char* key) {
-	char* dst = calloc(next(strlen(src), K), 1);
+char* tc0_decrypt_sb(char* src, size_t len, unsigned char* key, unsigned char* sbox) {
+	char* dst = calloc(next(len, K), 1);
 	unsigned long blocks = next(strlen(src), K) / K;
 	char* wnext = dst + ((blocks - 1) * K);
 	char* rnext = src + ((blocks - 1) * K);
-	unsigned char* rsbox = gen_rsbox(default_sbox);
+	unsigned char* rsbox = gen_rsbox(sbox);
 	for (unsigned long i = 0; i < blocks; i++) {
 		struct state s;
 		memcpy(s.c, rnext, K);
@@ -272,17 +267,10 @@ char* tc0_decrypt(char* src, unsigned char* key) {
 	return dst;
 }
 
-int main(int argc, char** argv) {
-	unsigned char* key = malloc(K);
-	memset(key, 69, K);
-	char* plaintext = malloc(K * 2);
-	memset(plaintext, 'B', K * 2);
-	char* encrypted = strencrypt(plaintext, key);
-	char* decrypted = strdecrypt(encrypted, key);
-	//abort();
-	//fwrite(encrypted, 1, K, stdout);
-	printf("\nDecrypted: %s\n", decrypted);
-	free(encrypted);
-	free(decrypted);
-	free(key);
+char* tc0_encrypt(char* src, unsigned char* key) {
+	return tc0_encrypt_sb(src, key, tc0_default_sbox);
+}
+
+char* tc0_decrypt(char* src, unsigned char* key) {
+	return tc0_decrypt_sb(src, key, tc0_default_sbox);
 }
