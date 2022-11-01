@@ -2,9 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <unistd.h>
 
-#include "encryption.h"
+#include "tc0.h"
 
 struct layer {
 	unsigned char d[N][N];
@@ -210,7 +209,7 @@ size_t next(size_t n, unsigned long m) {
 	return n + m - r;
 }
 
-char* tc0_encrypt_sb(char* src, size_t len, unsigned char* key, unsigned char* sbox) {
+char* tc0_encrypt(char* src, size_t len, unsigned char* key, const unsigned char* sbox) {
 	char* dst = calloc(next(len, K), 1);
 	unsigned long blocks = next(strlen(src), K) / K;
 	char* next = dst;
@@ -237,7 +236,7 @@ char* tc0_encrypt_sb(char* src, size_t len, unsigned char* key, unsigned char* s
 	return dst;
 }
 
-char* tc0_decrypt_sb(char* src, size_t len, unsigned char* key, unsigned char* sbox) {
+char* tc0_decrypt(char* src, size_t len, unsigned char* key, const unsigned char* sbox) {
 	char* dst = calloc(next(len, K), 1);
 	unsigned long blocks = next(strlen(src), K) / K;
 	char* wnext = dst + ((blocks - 1) * K);
@@ -265,12 +264,4 @@ char* tc0_decrypt_sb(char* src, size_t len, unsigned char* key, unsigned char* s
 	}
 	free(rsbox);
 	return dst;
-}
-
-char* tc0_encrypt(char* src, unsigned char* key) {
-	return tc0_encrypt_sb(src, key, tc0_default_sbox);
-}
-
-char* tc0_decrypt(char* src, unsigned char* key) {
-	return tc0_decrypt_sb(src, key, tc0_default_sbox);
 }
